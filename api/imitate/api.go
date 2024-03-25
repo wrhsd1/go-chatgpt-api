@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"io/ioutil"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"io"
@@ -53,9 +54,25 @@ func CreateChatCompletions(c *gin.Context) {
 		// Check if customAccessToken starts with eyJhbGciOiJSUzI1NiI
 		if strings.HasPrefix(customAccessToken, "eyJhbGciOiJSUzI1NiI") {
 			token = customAccessToken
-		// use defiend access token if the provided api key is equal to "IMITATE_API_KEY"
+		// use defined access token if the provided api key is equal to "IMITATE_API_KEY"
 		} else if imitate_api_key != "" && customAccessToken == imitate_api_key {
-			token = os.Getenv("IMITATE_ACCESS_TOKEN")
+			// Read token from local file
+			data, err := ioutil.ReadFile("/app/harPool/token.json")
+			if err != nil {
+				// Handle error
+				fmt.Println("Error reading token file:", err)
+				return
+			}
+			
+			var jsonData map[string]interface{}
+			err = json.Unmarshal(data, &jsonData)
+			if err != nil {
+				// Handle error
+				fmt.Println("Error unmarshalling token file:", err)
+				return
+			}
+			
+			token = jsonData["token"].(string)
 			if token == "" {
 				token = api.IMITATE_accessToken
 			}
