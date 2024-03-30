@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"io/ioutil"
 
 	http "github.com/bogdanfinn/fhttp"
 	tls_client "github.com/bogdanfinn/tls-client"
@@ -174,13 +175,24 @@ func ReturnMessage(msg string) gin.H {
 	}
 }
 
-func GetAccessToken(c *gin.Context) string {
-	accessToken := c.GetString(AuthorizationHeader)
-	if !strings.HasPrefix(accessToken, "Bearer") {
-		return "Bearer " + accessToken
-	}
+type Token struct {
+    Token string `json:"token"`
+}
 
-	return accessToken
+func GetAccessToken(c *gin.Context) string {
+    accessToken := c.GetString(AuthorizationHeader)
+    imitate_api_key := os.Getenv("IMITATE_API_KEY")
+    if accessToken == "Bearer " + imitate_api_key {
+        token := Token{}
+        file, _ := ioutil.ReadFile("harPool/token.json")
+        _ = json.Unmarshal([]byte(file), &token)
+        return "Bearer " + token.Token
+    } else {
+        if !strings.HasPrefix(accessToken, "Bearer") {
+            return "Bearer " + accessToken
+        }
+        return accessToken
+    }
 }
 
 func GetArkoseToken(api_version int) (string, error) {
