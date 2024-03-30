@@ -14,31 +14,13 @@ import (
 	//"net/url"
 	"strings"
 	"time"
-	"io/ioutil"
-	"os"
-	
+
 	http "github.com/bogdanfinn/fhttp"
 	"github.com/gin-gonic/gin"
 
 	"github.com/maxduke/go-chatgpt-api/api"
 	"github.com/linweiyuan/go-logger/logger"
 )
-
-type Token struct {
-    Token string `json:"token"`
-}
-
-func getNewAuth(originalAuth string) string {
-    imitate_api_key := os.Getenv("IMITATE_API_KEY")
-    if originalAuth == "Bearer " + imitate_api_key {
-        token := Token{}
-        file, _ := ioutil.ReadFile("harPool/token.json")
-        _ = json.Unmarshal([]byte(file), &token)
-        return "Bearer " + token.Token
-    } else {
-        return originalAuth
-    }
-}
 
 func CreateConversation(c *gin.Context) {
 	var request CreateConversationRequest
@@ -68,12 +50,12 @@ func CreateConversation(c *gin.Context) {
 		api_version = 3
 	}
 
-        // get accessToken
-        authHeader := getNewAuth(api.GetAccessToken(c))
-        if strings.HasPrefix(authHeader, "Bearer") {
-            authHeader = strings.Replace(authHeader, "Bearer ", "", 1)
-        }
-        chat_require := CheckRequire(authHeader)
+	// get accessToken
+	authHeader := api.GetAccessToken(c)
+	if strings.HasPrefix(authHeader, "Bearer") {
+		authHeader = strings.Replace(authHeader, "Bearer ", "", 1)
+	}
+	chat_require := CheckRequire(authHeader)
 
 	if chat_require.Arkose.Required == true && request.ArkoseToken == "" {
 		arkoseToken, err := api.GetArkoseToken(api_version)
@@ -98,7 +80,7 @@ func sendConversationRequest(c *gin.Context, request CreateConversationRequest, 
 	req, _ := http.NewRequest(http.MethodPost, api.ChatGPTApiUrlPrefix+"/backend-api/conversation", bytes.NewBuffer(jsonBytes))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", api.UserAgent)
-	req.Header.Set(api.AuthorizationHeader, getNewAuth(api.GetAccessToken(c)))
+	req.Header.Set(api.AuthorizationHeader, api.GetAccessToken(c))
 	req.Header.Set("Accept", "text/event-stream")
 	if request.ArkoseToken != "" {
 		req.Header.Set("Openai-Sentinel-Arkose-Token", request.ArkoseToken)
@@ -133,7 +115,7 @@ func sendConversationRequest(c *gin.Context, request CreateConversationRequest, 
 
 		req, _ := http.NewRequest(http.MethodGet, api.ChatGPTApiUrlPrefix+"/backend-api/models?history_and_training_disabled=false", nil)
 		req.Header.Set("User-Agent", api.UserAgent)
-		req.Header.Set(api.AuthorizationHeader, getNewAuth(api.GetAccessToken(c)))
+		req.Header.Set(api.AuthorizationHeader, api.GetAccessToken(c))
 		response, err := api.Client.Do(req)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, api.ReturnMessage(err.Error()))
