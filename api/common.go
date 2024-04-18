@@ -193,13 +193,13 @@ func GetAccessToken(c *gin.Context) string {
         i++
     }
 
-    tokens := []Token{}
+    tokenData := Token{}
     file, _ := ioutil.ReadFile("harPool/token.json")
-    _ = json.Unmarshal([]byte(file), &tokens)
+    _ = json.Unmarshal([]byte(file), &tokenData)
 
     for i, imitate_api_key := range imitate_api_keys {
         if accessToken == "Bearer " + imitate_api_key {
-            return "Bearer " + tokens[i].Token
+            return "Bearer " + tokenData.Tokens[i]
         }
     }
 
