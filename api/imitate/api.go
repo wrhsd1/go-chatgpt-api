@@ -34,60 +34,51 @@ func init() {
 	reg, _ = regexp.Compile("[^a-zA-Z0-9]+")
 }
 
+type Tokens []struct {
+    Token string `json:"token"`
+}
 func CreateChatCompletions(c *gin.Context) {
-	var original_request APIRequest
-	err := c.BindJSON(&original_request)
-	if err != nil {
-		c.JSON(400, gin.H{"error": gin.H{
-			"message": "Request must be proper JSON",
-			"type":    "invalid_request_error",
-			"param":   nil,
-			"code":    err.Error(),
-		}})
-		return
-	}
+    var original_request APIRequest
+    err := c.BindJSON(&original_request)
+    if err != nil {
+        c.JSON(400, gin.H{"error": gin.H{
+            "message": "Request must be proper JSON",
+            "type":    "invalid_request_error",
+            "param":   nil,
+            "code":    err.Error(),
+        }})
+        return
+    }
 
-	authHeader := c.GetHeader(api.AuthorizationHeader)
-	imitate_api_key := os.Getenv("IMITATE_API_KEY")
-	if authHeader != "" {
-		customAccessToken := strings.Replace(authHeader, "Bearer ", "", 1)
-		// Check if customAccessToken starts with eyJhbGciOiJSUzI1NiI
-		if strings.HasPrefix(customAccessToken, "eyJhbGciOiJSUzI1NiI") {
-			token = customAccessToken
-		// use defined access token if the provided api key is equal to "IMITATE_API_KEY"
-		} else if imitate_api_key != "" && customAccessToken == imitate_api_key {
-			// Read token from local file
-			data, err := ioutil.ReadFile("/app/harPool/token.json")
-			if err != nil {
-				// Handle error
-				fmt.Println("Error reading token file:", err)
-				return
-			}
-			
-			var jsonData map[string]interface{}
-			err = json.Unmarshal(data, &jsonData)
-			if err != nil {
-				// Handle error
-				fmt.Println("Error unmarshalling token file:", err)
-				return
-			}
-			
-			token = jsonData["token"].(string)
-			if token == "" {
-				token = api.IMITATE_accessToken
-			}
-		}
-	}
+    authHeader := c.GetHeader(api.AuthorizationHeader)
+    imitate_api_keys := strings.Split(os.Getenv("IMITATE_API_KEYS"), ",")
+    if authHeader != "" {
+        customAccessToken := strings.Replace(authHeader, "Bearer ", "", 1)
+        // Check if customAccessToken starts with eyJhbGciOiJSUzI1NiI
+        if strings.HasPrefix(customAccessToken, "eyJhbGciOiJSUzI1NiI") {
+            token = customAccessToken
+        } else {
+            tokens := Tokens{}
+            file, _ := ioutil.ReadFile("harPool/token.json")
+            _ = json.Unmarshal([]byte(file), &tokens)
+            for i, imitate_api_key := range imitate_api_keys {
+                if customAccessToken == imitate_api_key {
+                    token = tokens[i].Token
+                    break
+                }
+            }
+        }
+    }
 
-	if token == "" {
-		c.JSON(400, gin.H{"error": gin.H{
-			"message": "API KEY is missing or invalid",
-			"type":    "invalid_request_error",
-			"param":   nil,
-			"code":    "400",
-		}})
-		return
-	}
+    if token == "" {
+        c.JSON(400, gin.H{"error": gin.H{
+            "message": "API KEY is missing or invalid",
+            "type":    "invalid_request_error",
+            "param":   nil,
+            "code":    "400",
+        }})
+        return
+    }
 
 	uid := uuid.NewString()
 	var chat_require *chatgpt.ChatRequire
