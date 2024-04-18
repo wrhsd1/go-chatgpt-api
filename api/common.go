@@ -175,34 +175,21 @@ func ReturnMessage(msg string) gin.H {
 	}
 }
 
-type Token struct {
-    Tokens []string `json:"token"`
+type Tokens []struct {
+    Token string `json:"token"`
 }
 
 func GetAccessToken(c *gin.Context) string {
     accessToken := c.GetString(AuthorizationHeader)
-
-    imitate_api_keys := []string{}
-    i := 1
-    for {
-        imitate_api_key := os.Getenv(fmt.Sprintf("IMITATE_API_KEY%d", i))
-        if imitate_api_key == "" {
-            break
-        }
-        imitate_api_keys = append(imitate_api_keys, imitate_api_key)
-        i++
-    }
-
-    tokenData := Token{}
+    imitate_api_keys := strings.Split(os.Getenv("IMITATE_API_KEYS"), ",")
+    tokens := Tokens{}
     file, _ := ioutil.ReadFile("harPool/token.json")
-    _ = json.Unmarshal([]byte(file), &tokenData)
-
+    _ = json.Unmarshal([]byte(file), &tokens)
     for i, imitate_api_key := range imitate_api_keys {
         if accessToken == "Bearer " + imitate_api_key {
-            return "Bearer " + tokenData.Tokens[i]
+            return "Bearer " + tokens[i].Token
         }
     }
-
     if !strings.HasPrefix(accessToken, "Bearer") {
         return "Bearer " + accessToken
     }
