@@ -176,23 +176,37 @@ func ReturnMessage(msg string) gin.H {
 }
 
 type Token struct {
-    Token string `json:"token"`
+    Tokens []string `json:"token"`
 }
 
 func GetAccessToken(c *gin.Context) string {
     accessToken := c.GetString(AuthorizationHeader)
-    imitate_api_key := os.Getenv("IMITATE_API_KEY")
-    if accessToken == "Bearer " + imitate_api_key {
-        token := Token{}
-        file, _ := ioutil.ReadFile("harPool/token.json")
-        _ = json.Unmarshal([]byte(file), &token)
-        return "Bearer " + token.Token
-    } else {
-        if !strings.HasPrefix(accessToken, "Bearer") {
-            return "Bearer " + accessToken
+
+    imitate_api_keys := []string{}
+    i := 1
+    for {
+        imitate_api_key := os.Getenv(fmt.Sprintf("IMITATE_API_KEY%d", i))
+        if imitate_api_key == "" {
+            break
         }
-        return accessToken
+        imitate_api_keys = append(imitate_api_keys, imitate_api_key)
+        i++
     }
+
+    tokens := []Token{}
+    file, _ := ioutil.ReadFile("harPool/token.json")
+    _ = json.Unmarshal([]byte(file), &tokens)
+
+    for i, imitate_api_key := range imitate_api_keys {
+        if accessToken == "Bearer " + imitate_api_key {
+            return "Bearer " + tokens[i].Token
+        }
+    }
+
+    if !strings.HasPrefix(accessToken, "Bearer") {
+        return "Bearer " + accessToken
+    }
+    return accessToken
 }
 
 func GetArkoseToken(api_version int) (string, error) {
